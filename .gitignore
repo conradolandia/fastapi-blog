@@ -1,0 +1,5 @@
+requirements.in
+venv/
+.venv/
+.env
+.env.local
