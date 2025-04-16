@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from sqlmodel import SQLModel, select
-from pydantic import BaseModel
 
 from .models.post import Post
+from .models.schemas import PostUpdate
 from .database import SessionDep, engine
 
 
+# Create the database and tables
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
@@ -17,17 +18,8 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# Initialize the FastAPI app
 app = FastAPI(lifespan=lifespan)
-
-
-########################## Models ##########################
-
-
-# Post model for updates
-class PostUpdate(BaseModel):
-    title: str | None = None
-    content: str | None = None
-    published: bool | None = None
 
 
 ########################## Routes ##########################
@@ -82,7 +74,7 @@ def create_post(post: Post, session: SessionDep) -> dict:
 
 
 # Delete a post
-@app.delete("/v2/posts/{id}", status_code=status.HTTP_201_CREATED)
+@app.delete("/v2/posts/{id}")
 def delete_post(id: int, session: SessionDep) -> dict:
     post = session.get(Post, id)
     if not post:
@@ -92,7 +84,6 @@ def delete_post(id: int, session: SessionDep) -> dict:
         )
     session.delete(post)
     session.commit()
-    session.refresh(post)
     return {
         "status": "success",
         "message": f"Post {id} deleted successfully",
