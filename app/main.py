@@ -23,6 +23,21 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+# check if user exists
+def check_user_exists(user: UserCreate, session: SessionDep) -> bool:
+    query = select(User).where(User.email == user.email)
+    existing_user = session.exec(query).first()
+    if existing_user:
+        error = "User with this email already exists"
+        return True, error
+    query = select(User).where(User.username == user.username)
+    existing_user = session.exec(query).first()
+    if existing_user:
+        error = "User with this username already exists"
+        return True, error
+    return False, None
+
+
 ########################## Routes ##########################
 
 
@@ -107,3 +122,74 @@ def update_post(id: int, post_update: PostUpdate, session: SessionDep) -> PostPu
     session.refresh(post)
 
     return post
+
+
+# Create a user
+@app.post("/v2/users", status_code=status.HTTP_201_CREATED)
+def create_user(user: UserCreate, session: SessionDep) -> UserPublic:
+    # Check if user already exists
+    user_exists, error = check_user_exists(user, session)
+    if user_exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error,
+        )
+    db_user = User.model_validate(user)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
+
+
+# Get all users
+@app.get("/v2/users")
+def get_users(session: SessionDep) -> list[UserPublic]:
+    query = select(User)
+    users = session.exec(query).all()
+    return users
+
+
+# Get a single user
+@app.get("/v2/users/{id}")
+def get_user_by_id(id: int, session: SessionDep) -> UserPublic:
+    query = select(User).where(User.id == id)
+    user = session.exec(query).first()
+    return user
+
+
+# Update an user
+@app.put("/v2/users/{id}")
+def update_user(id: int, user_update: UserUpdate, session: SessionDep) -> UserPublic:
+    user = session.get(User, id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {id} not found",
+        )
+
+    # Convert to dict excluding unset values
+    update_data = user_update.model_dump(exclude_unset=True)
+
+    # Only update fields that were provided
+    for key, value in update_data.items():
+        setattr(user, key, value)
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    return user
+
+
+# Delete an user
+@app.delete("/v2/users/{id}")
+def delete_user(id: int, session: SessionDep) -> UserPublic:
+    user = session.get(User, id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {id} not found",
+        )
+    session.delete(user)
+    session.commit()
+    return user
