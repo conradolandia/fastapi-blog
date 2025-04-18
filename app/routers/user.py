@@ -58,19 +58,18 @@ def get_user_by_id(id: int, session: SessionDep) -> user_model.UserPublic:
     return user
 
 
-# Update an user
-@router.put("/{id}")
-def update_user(
-    id: int,
+# Update my profile
+@router.put("/me")
+def update_my_profile(
     user_update: user_model.UserUpdate,
     session: SessionDep,
     current_user: Annotated[user_model.User, Depends(get_current_active_user)],
 ) -> user_model.UserPublic:
-    user = session.get(user_model.User, id)
+    user = session.get(user_model.User, current_user.id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {id} not found",
+            detail=f"User with id {current_user.id} not found",
         )
 
     # Check if the authenticated user is updating their own profile
@@ -98,25 +97,17 @@ def update_user(
     return user
 
 
-# Delete an user
-@router.delete("/{id}")
-def delete_user(
-    id: int,
+# Delete my profile
+@router.delete("/me")
+def delete_my_profile(
     session: SessionDep,
     current_user: Annotated[user_model.User, Depends(get_current_active_user)],
 ) -> user_model.UserPublic:
-    user = session.get(user_model.User, id)
+    user = session.get(user_model.User, current_user.id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {id} not found",
-        )
-
-    # Check if the authenticated user is deleting their own profile
-    if user.id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to delete this user",
+            detail=f"User with id {current_user.id} not found",
         )
 
     session.delete(user)
