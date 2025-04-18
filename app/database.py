@@ -1,12 +1,15 @@
+import os
+from dotenv import load_dotenv
 from typing import Annotated
 
 from fastapi import Depends
 from sqlmodel import Session, create_engine
 
 
-POSTGRES_URL = "postgresql://bloguser:blogpassword@localhost:5432/blogdb"
+load_dotenv()
 
-engine = create_engine(POSTGRES_URL)
+
+engine = create_engine(os.getenv("POSTGRES_URL"))
 
 
 def get_session():

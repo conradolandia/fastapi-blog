@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field, Column
 from sqlalchemy import TIMESTAMP
-from pydantic import EmailStr
+from pydantic import BaseModel, EmailStr
 
 
 class UserBase(SQLModel):
     email: EmailStr = Field(nullable=False, unique=True)
     username: str = Field(nullable=False, unique=True)
     password: str = Field(nullable=False)
+    disabled: bool = Field(default=False)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(TIMESTAMP(timezone=True), index=True, nullable=False),
@@ -26,9 +27,32 @@ class UserPublic(SQLModel):
     created_at: datetime
 
 
-class UserCreate(UserBase):
-    pass
+class UserCreate(SQLModel):
+    email: EmailStr
+    username: str
+    password: str
 
 
-class UserUpdate(UserBase):
-    pass
+class UserUpdate(SQLModel):
+    username: str | None = None
+    email: EmailStr | None = None
+    password: str | None = None
+    disabled: bool | None = False
+
+
+class UserLogin(SQLModel):
+    email: EmailStr
+    password: str
+
+
+class UserInDB(SQLModel):
+    password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    username: str | None = None
