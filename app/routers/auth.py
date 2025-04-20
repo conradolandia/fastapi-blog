@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.database import SessionDep
 from app.models.user_model import Token
 from app.utils.security import create_access_token, authenticate_user
-
+from app.models.settings_model import settings
 
 router = APIRouter(prefix="/v2/auth", tags=["Authentication"])
 
@@ -28,7 +28,7 @@ async def login_for_access_token(
 
     # Create access token
     access_token_expires = timedelta(
-        minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+        minutes=settings.access_token_expire_minutes
     )
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires

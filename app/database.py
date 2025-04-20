@@ -5,11 +5,13 @@ from typing import Annotated
 from fastapi import Depends
 from sqlmodel import Session, create_engine
 
+from app.models.settings_model import settings
+
 
 load_dotenv()
 
 
-engine = create_engine(os.getenv("POSTGRES_URL"))
+engine = create_engine(settings.postgres_url)
 
 
 def get_session():

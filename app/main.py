@@ -1,16 +1,11 @@
-import os
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel
 
 from app.database import engine
 from app.routers import post, user, auth
-
-
-# Load the environment variables
-load_dotenv()
+from app.models.settings_model import settings
 
 
 # Create the database and tables
@@ -27,17 +22,17 @@ async def lifespan(app: FastAPI):
 # Initialize the FastAPI app
 app = FastAPI(
     lifespan=lifespan,
-    title=os.getenv("TITLE"),
-    version=os.getenv("VERSION"),
-    summary=os.getenv("SUMMARY"),
-    description=os.getenv("DESCRIPTION"),
-    contact=os.getenv("CONTACT"),
-    license_info=os.getenv("LICENSE_INFO"),
+    title=settings.title,
+    version=settings.version,
+    summary=settings.summary,
+    description=settings.description,
+    contact=settings.contact,
+    license_info=settings.license_info,
 )
 
 
 # Add CORS middleware
-origins = os.getenv("ALLOWED_ORIGINS").split(",")
+origins = settings.allowed_origins
 
 app.add_middleware(
     CORSMiddleware,

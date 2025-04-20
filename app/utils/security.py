@@ -1,5 +1,3 @@
-import os
-import passlib.exc
 from typing import Annotated
 from datetime import datetime, timedelta, timezone
 
@@ -11,7 +9,7 @@ from sqlmodel import select
 
 from app.models.user_model import User, TokenData, UserCreate
 from app.database import SessionDep
-
+from app.models.settings_model import settings
 
 # Initialize the password hasher
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -37,29 +35,38 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(
-        to_encode, os.getenv("SECRET_KEY"), algorithm=os.getenv("ALGORITHM")
+        to_encode, settings.secret_key, algorithm=settings.algorithm
     )
     return encoded_jwt
 
 
 # check if user exists
 def check_user_exists(
-    user: UserCreate, session: SessionDep
+    user_or_email: str | UserCreate, session: SessionDep
 ) -> tuple[bool, str | None]:
-    # Check both email and username in a single query
-    query = select(User).where(
-        (User.email == user.email)
-        | (User.username == user.username)
-    )
-    existing_user = session.exec(query).first()
-
-    if existing_user:
-        error = (
-            "User with this email already exists"
-            if existing_user.email == user.email
-            else "User with this username already exists"
+    # Handle both UserCreate object and email string
+    if isinstance(user_or_email, str):
+        email = user_or_email
+        # Only check email existence
+        query = select(User).where(User.email == email)
+        existing_user = session.exec(query).first()
+        if existing_user:
+            return True, "User with this email already exists"
+    else:
+        # Check both email and username in a single query
+        user = user_or_email
+        query = select(User).where(
+            (User.email == user.email)
+            | (User.username == user.username)
         )
-        return True, error
+        existing_user = session.exec(query).first()
+        if existing_user:
+            error = (
+                "User with this email already exists"
+                if existing_user.email == user.email
+                else "User with this username already exists"
+            )
+            return True, error
     return False, None
 
 
@@ -75,7 +82,7 @@ def get_current_user(
     )
     try:
         payload = jwt.decode(
-            token, os.getenv("SECRET_KEY"), algorithms=[os.getenv("ALGORITHM")]
+            token, settings.secret_key, algorithms=[settings.algorithm]
         )
         username: str | None = payload.get("sub")
         if username is None:

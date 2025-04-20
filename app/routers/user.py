@@ -4,6 +4,7 @@ from fastapi import HTTPException, status, APIRouter, Depends
 from sqlmodel import select
 
 from app.models import user_model
+from app.models.post_model import Post
 from app.database import SessionDep
 from app.utils.security import (
     check_user_exists,
@@ -86,6 +87,27 @@ def update_my_profile(
     if "password" in update_data:
         update_data["password"] = hash_password(update_data["password"])
 
+    # Check if the user is updating their own email
+    if "email" in update_data:
+        # Check if the email is already taken
+        email_exists, error = check_user_exists(update_data["email"], session)
+        if email_exists:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error)
+            
+    # Check if the user is updating their username
+    if "username" in update_data:
+        # Check if the username is already taken by another user
+        query = select(user_model.User).where(
+            (user_model.User.username == update_data["username"]) & 
+            (user_model.User.id != user.id)
+        )
+        existing_user = session.exec(query).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="User with this username already exists"
+            )
+
     # Only update fields that were provided
     for key, value in update_data.items():
         setattr(user, key, value)
@@ -110,6 +132,13 @@ def delete_my_profile(
             detail=f"User with id {current_user.id} not found",
         )
 
+    # First delete all posts by this user to maintain referential integrity
+    query = select(Post).where(Post.author_id == user.id)
+    posts = session.exec(query).all()
+    for post in posts:
+        session.delete(post)
+    
+    # Then delete the user
     session.delete(user)
     session.commit()
 

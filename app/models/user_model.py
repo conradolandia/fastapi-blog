@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from sqlmodel import SQLModel, Field, Column
+from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy import TIMESTAMP
 from pydantic import BaseModel, EmailStr
+from app.models.post_model import Post
 
 
 class UserBase(SQLModel):
@@ -18,6 +19,15 @@ class UserBase(SQLModel):
 class User(UserBase, table=True):
     __tablename__ = "users"
     id: int = Field(default=None, primary_key=True)
+    posts: list["Post"] = Relationship(back_populates="author")
+
+
+# Simplified Post reference for UserPublic
+class PostShared(SQLModel):
+    id: int
+    title: str
+    content: str
+    created_at: datetime
 
 
 class UserPublic(SQLModel):
@@ -25,6 +35,7 @@ class UserPublic(SQLModel):
     username: str
     email: EmailStr
     created_at: datetime
+    posts: list[PostShared] = []
 
 
 class UserCreate(SQLModel):
